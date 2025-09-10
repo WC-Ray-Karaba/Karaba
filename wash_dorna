@@ -527,8 +527,8 @@ def wash_single_screen(zero, screen):
     using_pos2 = [90.152, 73.300, -121.871, 26.573, 0.000, 16.0]
     using_pos = [using_pos1, using_pos2]
 
-    Delta_Y = [(math.sin(22) * height[0]) , (math.sin(22) * height[1]) ]
-    Delta_Z = [(math.cos(22) * height[0]), (math.cos(22) * height[1])]
+    Delta_Y = [(math.sin(.384) * height[0]) , (math.sin(.384)* height[1]) ]
+    Delta_Z = [(math.cos(.384) * height[0]), (math.cos(.384) * height[1])]
     Delta_C = [width[0] / segments[0] / 24.13, width[1] / segments[1] / 24.13]
     #Move to middle
     robot.play(TIMEOUT = -1, 
@@ -565,7 +565,7 @@ def wash_single_screen(zero, screen):
             rel=1, 
             x=0.0, 
             y=-2 * Delta_Y[screen], 
-            z=Delta_Z[screen], 
+            z=-Delta_Z[screen], 
             a=0.0, 
             b=180.0,
             c=-Delta_C[screen],
@@ -578,7 +578,7 @@ def wash_single_screen(zero, screen):
             rel=1, 
             x=0.0, 
             y=2* Delta_Y[screen], 
-            z=-Delta_Z[screen], 
+            z=Delta_Z[screen], 
             a=0.0, 
             b=-180.0,
             c=-Delta_C[screen],
@@ -597,15 +597,17 @@ def wash_single_perimeter(zero, screen):
     using_pos = [using_pos1, using_pos2]
     width = [280.0, 300.0]
     height = [180.1, 200.0 ]
-    Delta_Y = [(math.sin(22) * height[0]) , (math.sin(22) * height[1]) ]
-    Delta_Z = [(math.cos(22) * height[0]), (math.cos(22) * height[1])]
+    Delta_Y = [(math.sin(.384) * height[0]) , (math.sin(.384) * height[1]) ]
+    Delta_Z = [(math.cos(.384) * height[0]), (math.cos(.384) * height[1])]
+    print("Delta_Y: {}".format(Delta_Y))
+    print("Delta_Z: {}".format(Delta_Z))
 
-    Delta_RY = math.sin(22) * radius
-    Delta_RZ = math.cos(22) * radius
+    Delta_RY = math.sin(.384) * radius
+    Delta_RZ = math.cos(.384) * radius
     
 
-    Delta_move_side_y = [(height[0]+ 2 *radius) * math.sin(22), (height[1]+ 2 *radius) * math.sin(22)]
-    Delta_move_side_z = [(height[0]+ 2 *radius) * math.cos(22), (height[1]+ 2 *radius) * math.cos(22)]
+    Delta_move_side_y = [(height[0]+ 2 *radius) * math.sin(.384), (height[1]+ 2 *radius) * math.sin(.384)]
+    Delta_move_side_z = [(height[0]+ 2 *radius) * math.cos(.384), (height[1]+ 2 *radius) * math.cos(.384)]
     """
     # Moves to center
     robot.play(TIMEOUT = -1, 
@@ -642,7 +644,7 @@ def wash_single_perimeter(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=Delta_RY, 
+            y=-Delta_RY, 
             z=-Delta_RZ, 
             a=0.0, 
             b=0.0,
@@ -656,7 +658,7 @@ def wash_single_perimeter(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=depthY, 
+            y=-depthY, 
             z=0.0, 
             a=0.0, 
             b=0.0,
@@ -671,7 +673,7 @@ def wash_single_perimeter(zero, screen):
             rel=1, 
             x=0.0, 
             y=-Delta_move_side_y[screen],
-            z=Delta_move_side_z[screen],
+            z=-Delta_move_side_z[screen],
             a=0.0, 
             b=0.0,
             c=0.0,
@@ -698,7 +700,7 @@ def wash_single_perimeter(zero, screen):
             rel=1, 
             x=0.0, 
             y=Delta_move_side_y[screen],
-            z=-Delta_move_side_z[screen],
+            z=Delta_move_side_z[screen],
             a=0.0, 
             b=0.0,
             c=0.0,
@@ -723,7 +725,7 @@ def wash_single_perimeter(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=-2 * depthY, 
+            y=2 * depthY, 
             z=0.0, 
             a=0.0, 
             b=0.0,
@@ -912,25 +914,26 @@ def accguy(revs):
 
     zero = homing_position(ROBOT)
     
-    for i in range(2 * revs - 1):
+    for i in range(2 * revs):
         robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        x=ready_cart[0], 
-        y=ready_cart[1], 
-        z=ready_cart[2], 
-        a=ready_cart[3], 
-        b=ready_cart[4],
-        c=ready_cart[5] - zero,
-        vel=15, 
-        accel=2000, 
-        jerk=4000
+            cmd = "jmove",
+            rel=0, 
+            x=ready_cart[0], 
+            y=ready_cart[1], 
+            z=ready_cart[2], 
+            a=ready_cart[3], 
+            b=ready_cart[4],
+            c=ready_cart[5] - zero,
+            vel=15, 
+            accel=2000, 
+            jerk=4000
         )
     
-        print("Number: {}".format(str(counter)))
-        print("")
+        
         wash_single_screen(zero, counter)
         wash_single_perimeter(zero, counter)
+        print("Cleaned screen {} {} times".format(str(counter), str(int(i / 2)+1)))
+        print("")
         if counter == 0:
             counter = 1
         else:
@@ -947,14 +950,9 @@ def accguy(revs):
         vel=15, 
         accel=2000, 
         jerk=4000
-        )
+    )
 
 
-
-    
-
-    wash_single_screen(zero, 1)
-    wash_single_perimeter(zero, 1)
 def main():
     pid = os.getpid()
     try:
