@@ -19,15 +19,6 @@ TIMEOUT = 5
 c_axis = 0.04179
 
 VERSION = "2.0.0"
-"""
-
-LOG_LEVEL_INFO = logging.INFO
-LOG_LEVEL_DEBUG = logging.DEBUG
-
-logging.basicConfig(filename="revfile.log", format = '%(asctime)s %(message)s', filemode='w')
-
-logger = logging.getLogger()
-"""
 
 
 # Represents the physical buttons and switches on the fixture. 
@@ -40,14 +31,7 @@ EMERGENCY_BTN = {"input":6, "active_high":True}
 TEMP_BTN = {"input":4, "active_high":False}
 
 
-# Joint position for Home
-POSITIONS = {"HOME": (180.0, 180.0, -142.0, 135.0, 0.0)}
 
-# All positions that the Dorna arm can currently move to
-HOME = "HOME"                      # Fully folded position
-SAFE = "SAFE"                      # Safe position the robot can move to from home
-homing = "homing"
-start = "start"
 
 # Name of the position json file
 POSITIONS_JSON = "positions.json"
@@ -191,189 +175,6 @@ def pump_activate(robot: Dorna):
         time.sleep(5)
         robot.set_output(0,0)
 
-def wash_move(robot:Dorna, zero):
-    using_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
-    #[328.867, 5.695, 360.146, -22.0, -90.0, 25.280]
-    #Second screen: [90.180, 97.209, -125.076, 5.872, 0.000, -5.020]
-    using_pos2 = [90.180, 97.209, -125.076, 5.872, 0.000, 50.030]
-    print(using_cart)
-    print(zero)
-    robot.play(TIMEOUT = -1, 
-        cmd = "lmove",
-        rel=0, 
-        x=using_cart[0], 
-        y=using_cart[1], 
-        z=using_cart[2], 
-        a=using_cart[3], 
-        b=using_cart[4],
-        c=using_cart[5] - zero,
-        vel=150, 
-        accel=2000, 
-        jerk=4000
-        )
-    #print(Jake.isBestieswith("Aniket"))
-    for i in range(5):
-
-        robot.play(TIMEOUT = -1, 
-        cmd = "lmove",
-        rel=1, 
-        x=0.0, 
-        y=-33.733, 
-        z=-83.493, 
-        a=0.0, 
-        b=180.0,
-        c=-0.919,
-        vel=150, 
-        accel=2000, 
-        jerk=4000
-        )
-        robot.play(TIMEOUT = -1, 
-        cmd = "lmove",
-        rel=1, 
-        x=0.0, 
-        y=33.733, 
-        z=83.493, 
-        a=0.0, 
-        b=-180.0,
-        c=-0.919,
-        vel=150, 
-        accel=2000, 
-        jerk=4000
-        )
-    # Move back to ready position
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        j0=using_pos2[0], 
-        j1=using_pos2[1], 
-        j2=using_pos2[2], 
-        j3=using_pos2[3], 
-        j4=using_pos2[4],
-        j5=using_pos2[5] - zero,
-        vel=100, 
-        accel=2000, 
-        jerk=4000
-    )
-
-
-def double_wash(robot: Dorna, zero):
-    width = [280.0, 300.0]
-    height = [180.1, 200.0 ]
-    segments = [12, 14]
-    ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
-    using_pos1 = [90.152, 73.300, -121.871, 26.573, 0.000, 50.0]
-    using_pos2 = [90.152, 73.300, -121.871, 26.573, 0.000, 16.0]
-
-    Delta_Y = [(math.sin(22) * height[0]) , (math.sin(22) * height[1]) ]
-    Delta_Z = [(math.cos(22) * height[0]), (math.cos(22) * height[1])]
-    Delta_C = [width[0] / segments[0] / 24.13, width[1] / segments[1] / 24.13]
-
-    #Move to middle
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        x=ready_cart[0], 
-        y=ready_cart[1], 
-        z=ready_cart[2], 
-        a=ready_cart[3], 
-        b=ready_cart[4],
-        c=ready_cart[5] - zero,
-        vel=15, 
-        accel=2000, 
-        jerk=4000
-        )
-    
-    #Move to robot's leftmost screen
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        j0=using_pos1[0], 
-        j1=using_pos1[1], 
-        j2=using_pos1[2], 
-        j3=using_pos1[3], 
-        j4=using_pos1[4],
-        j5=using_pos1[5] - zero,
-        vel=15, 
-        accel=2000, 
-        jerk=4000
-        )
-    
-    for i in range(int(segments[0]/2)):
-        robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=-2 * Delta_Y[0], 
-            z=Delta_Z[0], 
-            a=0.0, 
-            b=180.0,
-            c=-Delta_C[0],
-            vel=250, 
-            accel=2000, 
-            jerk=4000
-        )
-        robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=2* Delta_Y[0], 
-            z=-Delta_Z[0], 
-            a=0.0, 
-            b=-180.0,
-            c=-Delta_C[0],
-            vel=250, 
-            accel=2000, 
-            jerk=4000
-            )
-
-
-
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        j0=using_pos2[0], 
-        j1=using_pos2[1], 
-        j2=using_pos2[2], 
-        j3=using_pos2[3], 
-        j4=using_pos2[4],
-        j5=using_pos2[5] - zero,
-        vel=15, 
-        accel=2000, 
-        jerk=4000
-        )
-
-    for i in range(int(segments[1]/2)):
-        robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=-2 * Delta_Y[1], 
-            z=Delta_Z[1], 
-            a=0.0, 
-            b=180.0,
-            c=-Delta_C[1],
-            vel=250, 
-            accel=2000, 
-            jerk=4000
-        )
-        robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=2* Delta_Y[1], 
-            z=-Delta_Z[1], 
-            a=0.0, 
-            b=-180.0,
-            c=-Delta_C[1],
-            vel=250, 
-            accel=2000, 
-            jerk=4000
-            )
-
-
-
-
-
 
 
 def perimeter_wash(robot: Dorna, zero):
@@ -385,9 +186,10 @@ def perimeter_wash(robot: Dorna, zero):
     Delta_Y = [(math.sin(22) * height[0]) , (math.sin(22) * height[1]) ]
     Delta_Z = [(math.cos(22) * height[0]), (math.cos(22) * height[1])]
 
-    Delta_RY = math.sin(22) * 50.8
-    Delta_RZ = math.cos(22) * 50.8
     radius =50.8
+    Delta_RY = math.sin(22) * radius
+    Delta_RZ = math.cos(22) * radius
+    
 
     Delta_move_side_y = [(height[0]+ 2 *radius) * math.sin(22), (height[1]+ 2 *radius) * math.sin(22)]
     Delta_move_side_z = [(height[0]+ 2 *radius) * math.cos(22), (height[1]+ 2 *radius) * math.cos(22)]
@@ -519,17 +321,20 @@ def perimeter_wash(robot: Dorna, zero):
 
 def wash_single_screen(zero, screen):
     robot = ROBOT
+    angle = math.radians(22)
+    print("Angle: {}".format(angle))
+    print(" Sin(22): {}".format(math.sin(angle)))
     width = [280.0, 300.0]
     height = [180.1, 200.0 ]
     segments = [12, 14]
     ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
-    using_pos1 = [90.152, 73.300, -121.871, 26.573, 0.000, 50.0]
-    using_pos2 = [90.152, 73.300, -121.871, 26.573, 0.000, 16.0]
+    using_pos1 = [90.124, 57.357, -99.335, 19.980, 0.000, 50.0]
+    using_pos2 = [90.124, 57.357, -99.335, 19.980, 0.000, 16.0]
     using_pos = [using_pos1, using_pos2]
 
-    Delta_Y = [(math.sin(.384) * height[0]) , (math.sin(.384)* height[1]) ]
-    Delta_Z = [(math.cos(.384) * height[0]), (math.cos(.384) * height[1])]
-    Delta_C = [width[0] / segments[0] / 24.13, width[1] / segments[1] / 24.13]
+    Delta_Y = [(math.sin(angle) * height[0]) , (math.sin(angle)* height[1]) ]
+    Delta_Z = [(math.cos(angle) * height[0]), (math.cos(angle) * height[1])]
+    Delta_C = [width[0] / segments[0] * .04179, width[1] / segments[1] * .04179]
     #Move to middle
     robot.play(TIMEOUT = -1, 
         cmd = "jmove",
@@ -564,7 +369,7 @@ def wash_single_screen(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=-2 * Delta_Y[screen], 
+            y=-Delta_Y[screen], 
             z=-Delta_Z[screen], 
             a=0.0, 
             b=180.0,
@@ -577,7 +382,7 @@ def wash_single_screen(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=2* Delta_Y[screen], 
+            y=Delta_Y[screen], 
             z=Delta_Z[screen], 
             a=0.0, 
             b=-180.0,
@@ -588,43 +393,29 @@ def wash_single_screen(zero, screen):
             )
 
 def wash_single_perimeter(zero, screen):
-    depthY = 25
     robot = ROBOT
-    radius =50.8
-    using_pos1 = [90.152, 73.300, -121.871, 26.573, 0.000, 50.0]
+    angle = math.radians(22)
+    depthY = 25
+    radius =101.6
+    using_pos1 = [90.124, 57.357, -99.335, 19.980, 0.000, 50.0]
+    using_pos2 = [90.124, 57.357, -99.335, 19.980, 0.000, 16.0]
     ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
-    using_pos2 = [90.152, 73.300, -121.871, 26.573, 0.000, 16.0]
     using_pos = [using_pos1, using_pos2]
     width = [280.0, 300.0]
     height = [180.1, 200.0 ]
-    Delta_Y = [(math.sin(.384) * height[0]) , (math.sin(.384) * height[1]) ]
-    Delta_Z = [(math.cos(.384) * height[0]), (math.cos(.384) * height[1])]
+    Delta_Y = [(math.sin(angle) * height[0]) , (math.sin(angle) * height[1]) ]
+    Delta_Z = [(math.cos(angle) * height[0]), (math.cos(angle) * height[1])]
     print("Delta_Y: {}".format(Delta_Y))
     print("Delta_Z: {}".format(Delta_Z))
 
-    Delta_RY = math.sin(.384) * radius
-    Delta_RZ = math.cos(.384) * radius
+    Delta_RY = math.sin(angle) * radius
+    Delta_RZ = math.cos(angle) * radius
     
 
-    Delta_move_side_y = [(height[0]+ 2 *radius) * math.sin(.384), (height[1]+ 2 *radius) * math.sin(.384)]
-    Delta_move_side_z = [(height[0]+ 2 *radius) * math.cos(.384), (height[1]+ 2 *radius) * math.cos(.384)]
-    """
-    # Moves to center
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        x=ready_cart[0], 
-        y=ready_cart[1], 
-        z=ready_cart[2], 
-        a=ready_cart[3], 
-        b=ready_cart[4],
-        c=ready_cart[5] - zero,
-        vel=45, 
-        accel=500, 
-        jerk=1000
-        )
-    """
-    #Move to robot's leftmost screen
+    Delta_move_side_y = [(height[0]+ 2 *radius) * math.sin(angle), (height[1]+ 2 *radius) * math.sin(angle)]
+    Delta_move_side_z = [(height[0]+ 2 *radius) * math.cos(angle), (height[1]+ 2 *radius) * math.cos(angle)]
+
+    #Move to robot's specified screen
     robot.play(TIMEOUT = -1, 
         cmd = "jmove",
         rel=0, 
@@ -644,8 +435,8 @@ def wash_single_perimeter(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=-Delta_RY, 
-            z=-Delta_RZ, 
+            y=Delta_RY, 
+            z=Delta_RZ, 
             a=0.0, 
             b=0.0,
             c=radius * c_axis,
@@ -658,7 +449,7 @@ def wash_single_perimeter(zero, screen):
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=-depthY, 
+            y=depthY, 
             z=0.0, 
             a=0.0, 
             b=0.0,
@@ -667,7 +458,7 @@ def wash_single_perimeter(zero, screen):
             accel=2000, 
             jerk=4000
         )
-    
+    # Moves down left side screen
     robot.play(TIMEOUT = -1, 
             cmd = "lmove",
             rel=1, 
@@ -681,7 +472,7 @@ def wash_single_perimeter(zero, screen):
             accel=2000, 
             jerk=4000
         )
-    
+    # Moves across the bottom side
     robot.play(TIMEOUT = -1, 
             cmd = "lmove",
             rel=1, 
@@ -695,6 +486,7 @@ def wash_single_perimeter(zero, screen):
             accel=2000,
             jerk=4000
         )
+    # Move up right side of screen
     robot.play(TIMEOUT = -1, 
             cmd = "lmove",
             rel=1, 
@@ -708,6 +500,7 @@ def wash_single_perimeter(zero, screen):
             accel=2000, 
             jerk=4000
         )
+    # Move across the top of the screen
     robot.play(TIMEOUT = -1, 
             cmd = "lmove",
             rel=1, 
@@ -721,11 +514,12 @@ def wash_single_perimeter(zero, screen):
             accel=2000,
             jerk=4000
         )
+    # Move away from screen
     robot.play(TIMEOUT = -1, 
             cmd = "lmove",
             rel=1, 
             x=0.0, 
-            y=2 * depthY, 
+            y=-2 * depthY, 
             z=0.0, 
             a=0.0, 
             b=0.0,
@@ -735,112 +529,7 @@ def wash_single_perimeter(zero, screen):
             jerk=4000
         )
 
-def gogg(robot: Dorna, zero):
-    ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
-    using_pos1 = [90.152, 73.300, -121.871, 26.573, 0.000, 50.0]
-    Delta_RY = math.sin(22) * 50.8
-    Delta_RZ = math.cos(22) * 50.8
-    radius =50.8
 
-    zero = homing_position(robot)
-    #Move to robot's leftmost screen
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        j0=using_pos1[0], 
-        j1=using_pos1[1], 
-        j2=using_pos1[2], 
-        j3=using_pos1[3], 
-        j4=using_pos1[4],
-        j5=using_pos1[5] - zero,
-        vel=45, 
-        accel=500, 
-        jerk=1000
-        )
-    #Adjust leftside
-    robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=Delta_RY, 
-            z=-Delta_RZ, 
-            a=0.0, 
-            b=0.0,
-            c=50.8 * c_axis,
-            vel=75, 
-            accel=2000, 
-            jerk=4000
-        )
-    robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=25, 
-            z=0.0, 
-            a=0.0, 
-            b=0.0,
-            c=0.0,
-            vel=75, 
-            accel=2000, 
-            jerk=4000
-        )
-    double_wash(robot, zero)
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        x=ready_cart[0], 
-        y=ready_cart[1], 
-        z=ready_cart[2], 
-        a=ready_cart[3], 
-        b=ready_cart[4],
-        c=ready_cart[5] - zero,
-        vel=15, 
-        accel=2000, 
-        jerk=4000
-        )
-    #Move to robot's leftmost screen
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        j0=using_pos1[0], 
-        j1=using_pos1[1], 
-        j2=using_pos1[2], 
-        j3=using_pos1[3], 
-        j4=using_pos1[4],
-        j5=using_pos1[5] - zero,
-        vel=45, 
-        accel=500, 
-        jerk=1000
-        )
-    #Adjust leftside
-    robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=Delta_RY, 
-            z=-Delta_RZ, 
-            a=0.0, 
-            b=0.0,
-            c=50.8 * c_axis,
-            vel=75, 
-            accel=2000, 
-            jerk=4000
-        )
-    robot.play(TIMEOUT = -1, 
-            cmd = "lmove",
-            rel=1, 
-            x=0.0, 
-            y=25, 
-            z=0.0, 
-            a=0.0, 
-            b=0.0,
-            c=0.0,
-            vel=75, 
-            accel=2000, 
-            jerk=4000
-        )
-    perimeter_wash(robot, zero)
-# Function for testing miscellaneous code processes
 def test_position(robot: Dorna):
     all_joints = ROBOT.get_all_joint()
     robot.play(TIMEOUT = -1,
@@ -862,46 +551,11 @@ def start_position(robot: Dorna, revs):
     using_pos2 = [90.180, 97.209, -125.076, 5.872, 0.000, 25.252]
     #Move ready position to json file later
 
-    # Move robot to ready position
-    """
-    robot.play(TIMEOUT = -1, 
-        cmd = "jmove",
-        rel=0, 
-        j0=using_pos2[0], 
-        j1=using_pos2[1], 
-        j2=using_pos2[2], 
-        j3=using_pos2[3], 
-        j4=using_pos2[4],
-        j5=using_pos2[5] - zero + 1,
-        vel=100, 
-        accel=13000, 
-        jerk=25000
-    )
-    """
     # Begin washing motion process
     for i in range(revs):
      double_wash(robot, zero)
      print(i + 1)
-"""
-def E_Stop(PID):
-    # Check pin status until pressed
-    while (GPIO.input(Emergency_Pin) & GPIO.input(Run_Switch)): 
-        # Wait 10 ms before checking again
-        time.sleep(.01)
-    # Pause or kill the other program
-    if (GPIO.input(Run_Switch)):
-        #pause somehow, wait for switch, and restart. Then self call
-        a = 1
-    else:
-        subprocess.run(["/home/dorna/Python/killfile.sh", str(PID)], check=True)
-        # Kill the PID of other program
 
-numList = [4, 17, 27, 22, 5, 6, 13, 19, 26, 23, 24, 12, 16, 20, 21, 2, 3, 10, 9, 11, 8, 7, 1]
-def get_GPIO():
-    for i in numList:
-        GPIO.setup(i, GPIO.IN)
-        print("Pin Number: {}, Output: {}".format(str(i), str(GPIO.input(i))))
-"""
 def loop():
     while True:
         GPIO.setup(9, GPIO.IN)
@@ -924,11 +578,10 @@ def accguy(revs):
             a=ready_cart[3], 
             b=ready_cart[4],
             c=ready_cart[5] - zero,
-            vel=15, 
+            vel=45, 
             accel=2000, 
             jerk=4000
         )
-    
         
         wash_single_screen(zero, counter)
         wash_single_perimeter(zero, counter)
@@ -974,7 +627,6 @@ def main():
                 pump_activate(ROBOT)
             elif command in ['t', 'test']:
                 accguy(2)
-                
             elif command in ['c','clear']:
                 clear_alarm(ROBOT)
             else:
