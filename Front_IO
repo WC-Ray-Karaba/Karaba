@@ -1,0 +1,80 @@
+import time
+from dorna2 import Dorna
+
+# Standard Robot Initilization
+robot = Dorna()
+robot.connect()
+
+# Input I/O Pin Definitions
+# {pin #, Active state}
+Left_SW =   {1, True}
+Middle_SW = {2, True}
+BLUE =      {3, True}
+Tank_Lvl =  {4, False}
+E_STOP =    {6, False}
+
+# Output I/O Pin Definitions
+Tank_Pump = {"output": 0, "active_high": True}
+End_Pump =  {"output": 1, "active_hihg": True}
+
+
+# State tracking
+
+E_STOP_STATE = bool(robot.get_input(6))
+Motor_State = bool(robot.get_input(2))
+Run_State = bool(robot.get_input(1))
+
+
+print("{}, {}, {}".format(E_STOP_STATE, Motor_State, Run_State))
+robot.set_motor(Motor_State)
+
+if not E_STOP or Run_State:
+    robot.set_alarm(1)
+    robot.halt()
+    print("This totes didn't work yo")
+
+# Monitor I/O states
+while True: # CHANGE TO CHECK IF THE OTHER PROGRAM IS RUNNING
+    #print(robot.get_all_input())
+    #Current_IO = robot.get_all_input()
+    E_IO = robot.get_input(6)
+    M_IO = robot.get_input(2)
+    R_IO = robot.get_input(1)
+    
+    # Halt robot if E-Stop is pressed
+    if E_IO == True and E_STOP_STATE == False:
+        robot.halt()
+        E_STOP_STATE = True
+        print("E-STOP Released")
+    if E_IO == False and E_STOP_STATE == True:
+        # If the E-Stop is no longer pressed, remove the halt
+        robot.set_alarm(0)
+        E_STOP_STATE = False
+        print("E-STOP!")
+    
+    # Run switch controls
+    if R_IO == True and Run_State == False:
+        robot.halt()
+        Run_State = True
+        print("Run")
+    if R_IO == False and Run_State == True:
+        robot.set_alarm(0)
+        Run_State = False
+        print("Paused")
+
+    # Motor State Switch
+    if M_IO == True and E_STOP_STATE and Motor_State == False:
+        robot.set_alarm(0)
+        robot.set_motor(1)
+        Motor_State = True
+        print("Motors On")
+    if M_IO == False and E_STOP_STATE and Motor_State == True:
+        robot.set_motor(0)
+        Motor_State = False
+        print("Motors Off")
+
+    # Sleep for 10ms
+    #time.sleep(0.01)
+
+# Deconstruct robot object    
+robot.close()
