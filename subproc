@@ -1,0 +1,8 @@
+import subprocess
+
+p1 = subprocess.Popen(["python", "Front_IO.py"])
+p2 = subprocess.Popen(["python", "Double_Wash.py"])
+
+# Wait for processes to finish
+p1.wait()
+p2.wait()
