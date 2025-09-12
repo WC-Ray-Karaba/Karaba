@@ -1,0 +1,453 @@
+import os
+import sys
+import json
+from dorna2 import Dorna
+import time
+import subprocess
+import argparse
+import tracemalloc
+import logging
+import threading
+import RPi.GPIO as GPIO
+import math
+import subprocess
+
+
+
+ROBOT = Dorna()
+TIMEOUT = 5   
+c_axis = 0.04179
+VERSION = "3.0.0"
+
+
+# Represents the physical buttons and switches on the fixture. 
+# Dictionary containing the input pin number and their active highs
+PUMP_BTN = {"output": 0, "active_high": True}
+RUN_SWITCH = {"input":1, "active_high":True}
+MOTOR_SWITCH = {"input":2, "active_high":True}
+HOME_BTN = {"input":3, "active_high":True}
+EMERGENCY_BTN = {"input":6, "active_high":True}
+TEMP_BTN = {"input":4, "active_high":False}
+
+
+
+
+# Name of the position json file
+POSITIONS_JSON = "positions.json"
+
+# Available commands
+HELP = "\nCommands: \n" \
+    + " h/help                 : Print help\n" \
+    + " q/quit                 : Quit program\n" \
+    + " p/print                : Print positions.json\n" \
+    + " m/motor                : Check motor switch\n"  \
+    + " g/get                  : print current position data\n" \
+    + "t/test                 : test position\n" \
+    + "L/Lump                 : lump start\n"
+# Functionality of each button and switch during editin mode
+EDIT_HELP = "\n" \
+    + "Emergency Stop          : Cancel Editing\n" \
+    + "Run Switch              : Prints Dorna Arm positions\n" \
+    + "Motor Switch            : Turns on Dorna Arm motor\n" \
+    + "Home Button             : Homes Dorna Arm\n" \
+    + "Run + Motor Switch      : Saves Dorna Arm positions\n" \
+
+
+
+# Gets the current path to this python file
+def get_position_path():
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(current_directory, POSITIONS_JSON)
+
+def get_all_joint_positions(ROBOT: Dorna):
+    all_joints = ROBOT.get_all_joint()
+    all_cart = ROBOT.get_all_pose()
+    print("Joint: {} \n Cart: {}".format(all_joints, all_cart))
+    return all_joints
+
+# Trys to parse the position.json file in the current directory if
+# file does not exist make a new file with predefined joints
+def parse_positions_json():
+    positions_json_path = get_position_path()
+    try:
+        with open(positions_json_path,  'r') as position_file:
+            data = json.load(position_file)
+            for key, value in data.items():
+                data[key] = tuple(value)
+            return data
+    except FileNotFoundError:
+        default_position_json = {
+            "HOME":            (180.0, 180.0, -142.0, 135.0, 0.0, 0.0),
+            "SAFE":            (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "DISPEN_BENEATH":  (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "DISPEN_GRAB":     (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "EJEC_ABOVE":      (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "EJEC_ATTACH":     (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "EJECT_WAIT":      (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "TRASH":           (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "TRASH_GENTLE1":   (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "TRASH_GENTLE2":   (90.0, -40.0, 130.0, 135.0, 0.0, 0.0),
+            "test": (90.0, -40.0, 130.0, 135.0, 0.0, 10.0)
+        }
+        create_json(positions_json_path, default_position_json)
+        return default_position_json
+
+def check_input(input_item:dict):
+    input_index = input_item["input"]
+    active_high = input_item["active_high"]
+    # time.sleep(0.5)
+    return ROBOT.get_input(input_index) == active_high
+
+# Sets the rail start position (Joint 6)
+def homing_position():
+    while check_input(TEMP_BTN) == False:
+        all_joints = ROBOT.get_all_joint()
+        #print(all_joints)
+        #print(check_input(ROBOT, TEMP_BTN))
+        
+        ROBOT.play(TIMEOUT = -1,
+        cmd = "jmove",
+        rel=0,
+        j0= float(all_joints[0]),
+        j1= float(all_joints[1]),
+        j2= float(all_joints[2]),
+        j3= float(all_joints[3]),
+        j4= float(all_joints[4]),
+        j5= float(all_joints[5]) - 0.25,
+        vel=50.0, 
+        accel=250.0, 
+        jerk=5000.0
+        )
+    all_joints = ROBOT.get_all_joint()
+    ROBOT.play(TIMEOUT = -1,
+        cmd = "jmove",
+        rel=0,
+        j0= float(all_joints[0]),
+        j1= float(all_joints[1]),
+        j2= float(all_joints[2]),
+        j3= float(all_joints[3]),
+        j4= float(all_joints[4]),
+        j5= float(all_joints[5]) + 0.15,
+        vel=10.0, 
+        accel=10000.0, 
+        jerk=20000.0
+        )
+
+    while check_input(TEMP_BTN) == False:
+        all_joints = ROBOT.get_all_joint()
+        #print(all_joints)
+        #print(check_input(ROBOT, TEMP_BTN))
+        
+        ROBOT.play(TIMEOUT = -1,
+        cmd = "jmove",
+        rel=0,
+        j0= float(all_joints[0]),
+        j1= float(all_joints[1]),
+        j2= float(all_joints[2]),
+        j3= float(all_joints[3]),
+        j4= float(all_joints[4]),
+        j5= float(all_joints[5]) - 0.02,
+        vel=50.0, 
+        accel=5000.0, 
+        jerk=5000.0
+        )
+    print("position 5: {}".format(float(all_joints[5])))
+    using_start_pos = get_all_joint_positions(ROBOT)
+    zero = (-float(using_start_pos[5]))
+    return(zero)
+
+def wash_single_screen(zero, screen):
+    angle = math.radians(22)
+    width = [280.0, 300.0]
+    height = [180.1, 200.0 ]
+    segments = [12, 14]
+    ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
+    using_pos1 = [90.124, 57.357, -99.335, 19.980, 0.000, 50.0]
+    using_pos2 = [90.124, 57.357, -99.335, 19.980, 0.000, 16.0]
+    using_pos = [using_pos1, using_pos2]
+
+    Delta_Y = [(math.sin(angle) * height[0]) , (math.sin(angle)* height[1]) ]
+    Delta_Z = [(math.cos(angle) * height[0]), (math.cos(angle) * height[1])]
+    Delta_C = [width[0] / segments[0] * .04179, width[1] / segments[1] * .04179]
+    #Move to middle
+    ROBOT.play(TIMEOUT = -1, 
+        cmd = "jmove",
+        rel=0, 
+        x=ready_cart[0], 
+        y=ready_cart[1], 
+        z=ready_cart[2], 
+        a=ready_cart[3], 
+        b=ready_cart[4],
+        c=ready_cart[5] - zero,
+        vel=15, 
+        accel=2000, 
+        jerk=4000
+        )
+   
+    #Move to ROBOT's leftmost screen
+    ROBOT.play(TIMEOUT = -1, 
+        cmd = "jmove",
+        rel=0, 
+        j0=using_pos[screen][0], 
+        j1=using_pos[screen][1], 
+        j2=using_pos[screen][2], 
+        j3=using_pos[screen][3], 
+        j4=using_pos[screen][4],
+        j5=using_pos[screen][5] - zero,
+        vel=10, 
+        accel=2000, 
+        jerk=4000
+        )
+    for i in range(int(segments[screen]/2)):
+        ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=-Delta_Y[screen], 
+            z=-Delta_Z[screen], 
+            a=0.0, 
+            b=180.0,
+            c=-Delta_C[screen],
+            vel=250, 
+            accel=2000, 
+            jerk=4000
+        )
+        ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=Delta_Y[screen], 
+            z=Delta_Z[screen], 
+            a=0.0, 
+            b=-180.0,
+            c=-Delta_C[screen],
+            vel=250, 
+            accel=2000, 
+            jerk=4000
+            )
+
+def wash_single_perimeter(zero, screen):
+    angle = math.radians(22)
+    depthY = 25
+    radius =50.8
+    using_pos1 = [90.124, 57.357, -99.335, 19.980, 0.000, 50.0]
+    using_pos2 = [90.124, 57.357, -99.335, 19.980, 0.000, 16.0]
+    ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
+    using_pos = [using_pos1, using_pos2]
+    width = [280.0, 300.0]
+    height = [180.1, 200.0 ]
+    Delta_Y = [(math.sin(angle) * height[0]) , (math.sin(angle) * height[1]) ]
+    Delta_Z = [(math.cos(angle) * height[0]), (math.cos(angle) * height[1])]
+
+
+    Delta_RY = math.sin(angle) * radius
+    Delta_RZ = math.cos(angle) * radius
+    
+
+    Delta_move_side_y = [(height[0]+ 2 *radius) * math.sin(angle), (height[1]+ 2 *radius) * math.sin(angle)]
+    Delta_move_side_z = [(height[0]+ 2 *radius) * math.cos(angle), (height[1]+ 2 *radius) * math.cos(angle)]
+
+    #Move to ROBOT's specified screen
+    ROBOT.play(TIMEOUT = -1, 
+        cmd = "jmove",
+        rel=0, 
+        j0=using_pos[screen][0], 
+        j1=using_pos[screen][1], 
+        j2=using_pos[screen][2], 
+        j3=using_pos[screen][3], 
+        j4=using_pos[screen][4],
+        j5=using_pos[screen][5] - zero,
+        vel=45, 
+        accel=500, 
+        jerk=1000
+        )
+
+    #Adjust leftside
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=Delta_RY, 
+            z=Delta_RZ, 
+            a=0.0, 
+            b=0.0,
+            c=radius * c_axis,
+            vel=75, 
+            accel=2000, 
+            jerk=4000
+        )
+    
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=depthY, 
+            z=0.0, 
+            a=0.0, 
+            b=0.0,
+            c=0.0,
+            vel=75, 
+            accel=2000, 
+            jerk=4000
+        )
+    # Moves down left side screen
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=-Delta_move_side_y[screen],
+            z=-Delta_move_side_z[screen],
+            a=0.0, 
+            b=0.0,
+            c=0.0,
+            vel=75, 
+            accel=2000, 
+            jerk=4000
+        )
+    # Moves across the bottom side
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=0.0, 
+            z=-0.0, 
+            a=0.0, 
+            b=0.0,
+            c=-(width[screen] + 2 * radius) * c_axis,
+            vel=3.145, 
+            accel=2000,
+            jerk=4000
+        )
+    # Move up right side of screen
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=Delta_move_side_y[screen],
+            z=Delta_move_side_z[screen],
+            a=0.0, 
+            b=0.0,
+            c=0.0,
+            vel=75, 
+            accel=2000, 
+            jerk=4000
+        )
+    # Move across the top of the screen
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=0.0, 
+            z=-0.0, 
+            a=0.0, 
+            b=0.0,
+            c=(width[screen] + 2 * radius) * c_axis,
+            vel=3.145, 
+            accel=2000,
+            jerk=4000
+        )
+    # Move away from screen
+    ROBOT.play(TIMEOUT = -1, 
+            cmd = "lmove",
+            rel=1, 
+            x=0.0, 
+            y=-2 * depthY, 
+            z=0.0, 
+            a=0.0, 
+            b=0.0,
+            c=0.0,
+            vel=75, 
+            accel=2000, 
+            jerk=4000
+        )
+
+def start_position(revs):
+    zero = homing_position(ROBOT)
+    using_pos2 = [90.180, 97.209, -125.076, 5.872, 0.000, 25.252]
+    #Move ready position to json file later
+
+    # Begin washing motion process
+    for i in range(revs):
+     double_wash(zero)
+     print(i + 1)
+
+
+def accguy(revs):
+    counter = 0
+    ready_cart =  [-0.786, 300.067, 268.442, -21.994, 0.0, 29.43, 0.0, 0.0]
+
+    zero = homing_position()
+    
+    for i in range(2 * revs):
+        ROBOT.play(TIMEOUT = -1, 
+            cmd = "jmove",
+            rel=0, 
+            x=ready_cart[0], 
+            y=ready_cart[1], 
+            z=ready_cart[2], 
+            a=ready_cart[3], 
+            b=ready_cart[4],
+            c=ready_cart[5] - zero,
+            vel=45, 
+            accel=2000, 
+            jerk=4000
+        )
+        
+        wash_single_screen(zero, counter)
+        wash_single_perimeter(zero, counter)
+        print("Cleaned screen {} {} times".format(str(counter), str(int(i / 2)+1)))
+        print("")
+        if counter == 0:
+            counter = 1
+        else:
+            counter = 0
+    ROBOT.play(TIMEOUT = -1, 
+        cmd = "jmove",
+        rel=0, 
+        x=ready_cart[0], 
+        y=ready_cart[1], 
+        z=ready_cart[2], 
+        a=ready_cart[3], 
+        b=ready_cart[4],
+        c=ready_cart[5] - zero,
+        vel=15, 
+        accel=2000, 
+        jerk=4000
+    )
+
+
+def main():
+    time.sleep(5)
+    pid = os.getpid()
+    try:
+        print("Connected") if ROBOT.connect() else sys.exit()
+        #help()
+        while True:
+            command = input("> ")
+            if command in ['q', 'quit']:
+                break
+            elif command in ['g', 'get']:
+                get_all_joint_positions()
+            elif command in ['h', 'homing']:
+                homing_position()
+            elif command in ['t', 'test']:
+                accguy(2)
+                break
+            else:
+                #help()
+                print("")
+    except Exception as e:
+        print(e)
+    finally:
+        ROBOT.close()
+        print("Disconnected")
+    
+
+
+
+if __name__ == "__main__":
+    print(f"Version: {VERSION}")
+    main()
+
+
+    
